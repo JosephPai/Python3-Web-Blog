@@ -10,20 +10,19 @@ import aiomysql
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
 
-@asyncio.coroutine
-def create_pool(loop, **kw):
-    logging.info('create datebase connection pool...')
+async def create_pool(loop, **kw):
+    logging.info('create database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
-        host=kw.get('host','localhost'),
-        port=kw.get('port',3306),
+    __pool = await aiomysql.create_pool(
+        host=kw.get('host', 'localhost'),
+        port=kw.get('port', 3306),
         user=kw['user'],
         password=kw['password'],
         db=kw['db'],
-        charset=kw.get('charset','utf8'),
-        autocommit=kw.get('autocommit',True),
-        maxsize=kw.get('maxsize',10),
-        minsize=kw.get('minsize',1),
+        charset=kw.get('charset', 'utf8'),
+        autocommit=kw.get('autocommit', True),
+        maxsize=kw.get('maxsize', 10),
+        minsize=kw.get('minsize', 1),
         loop=loop
     )
 
@@ -45,14 +44,22 @@ def select(sql,args,size=None):
 @asyncio.coroutine
 def execute(sql, args):
     log(sql)
-    with (yield from __pool) as conn:
+    async with __pool.get() as conn:
+        if not autocommit:
+            await conn.begin()
         try:
-            cur=yield from conn.cursor()
-            yield from cur.execute(sql.replace('?','%s'), args)
-            affected = cur.rowcount
-            yield from cur.close()
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(sql.replace('?', '%s'), args)
+                affected = cur.rowcount
+                await cur.close()
+            if not autocommit:
+                await conn.commit()
         except BaseException as e:
+            if not autocommit:
+                await conn.rollback()
             raise
+        finally:
+            conn.close()
         return affected
 
 def create_args_string(num):
@@ -60,6 +67,7 @@ def create_args_string(num):
     for n in range(num):
         L.append('?')
     return ', '.join(L)
+
 
 from orm import Model, StringField, IntegerField
 class User(Model):

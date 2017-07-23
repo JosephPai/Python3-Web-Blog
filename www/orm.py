@@ -194,7 +194,8 @@ class Model(dict, metaclass=ModelMetaclass):
 
     # 类方法的第一个参数是cls,而实例方法的第一个参数是self
     @classmethod
-    async def findAll(cls, where=None, args=None, **kw):
+    @asyncio.coroutine
+    def findAll(cls, where=None, args=None, **kw):
         ' find objects by where clause. '
         sql = [cls.__select__]
         if where:
@@ -213,13 +214,11 @@ class Model(dict, metaclass=ModelMetaclass):
                 sql.append('?')
                 args.append(limit)
             elif isinstance(limit, tuple) and len(limit) == 2:
-                sql.append('?', '?')
-                # extend 接收一个iterable参数
+                sql.append('?, ?')
                 args.extend(limit)
             else:
                 raise ValueError('Invalid limit value: %s' % str(limit))
-        #调用select函数,返回值是从数据库里查找到的数据结果
-        rs = await select(' '.join(sql), args)
+        rs = yield from select(' '.join(sql), args)
         return [cls(**r) for r in rs]
 
     @classmethod
@@ -244,23 +243,25 @@ class Model(dict, metaclass=ModelMetaclass):
             return None
         return cls(**rs[0])
 
-    async def save(self):
-        # 获取所有value
+    @asyncio.coroutine
+    def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
-        rows = await execute(self.__insert__, args)
+        rows = yield from execute(self.__insert__, args)
         if rows != 1:
-            logging.warning('failed to insert record: affected rows: %s' % rows)
+            logging.warn('failed to insert record: affected rows: %s' % rows)
 
-    async def update(self):
+    @asyncio.coroutine
+    def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = await execute(self.__update__, args)
+        rows = yield from execute(self.__update__, args)
         if rows != 1:
-            logging.warning('failed to update by primary key: affected rows: %s' % rows)
+            logging.warn('failed to update by primary key: affected rows: %s' % rows)
 
-    async def remove(self):
+    @asyncio.coroutine
+    def remove(self):
         args = [self.getValue(self.__primary_key__)]
-        rows = await execute(self.__delete__, args)
+        rows = yield from execute(self.__delete__, args)
         if rows != 1:
-            logging.warning('failed to remove by primary key: affected rows: %s' % rows)
+            logging.warn('failed to remove by primary key: affected rows: %s' % rows)

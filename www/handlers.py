@@ -28,7 +28,8 @@ def index(request):
     ]
     return {
         '__template__': 'blogs.html',
-        'blogs': blogs
+        'blogs': blogs,
+        '__user__': request.__user__    #手动导入用户状态
     }
 
 @get('/api/users')
@@ -102,6 +103,7 @@ def manage_create_blog():
 
 _RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
 _RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
+#正则表达式参考 http://www.cnblogs.com/vs-bug/archive/2010/03/26/1696752.html
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs.session.secret
 

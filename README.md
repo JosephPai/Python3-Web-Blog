@@ -1,4 +1,4 @@
-# Python3 Web App
+# Python3 Web Blog
 
 参考廖雪峰老师的 [Python教程 - 廖雪峰的官方网站](https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000)
 完成了Blog网站的搭建
